@@ -65,15 +65,16 @@
     </ul>
   </div>
 
-  <!-- ربط Firebase وبناء دالة الحفظ والجلب السحابي -->
+  <!-- ربط Realtime Database -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 1. إعدادات مشروعك في Firebase (ClinicSystem)
+    // إعدادات المشروع مع رابط Realtime Database
     const firebaseConfig = {
-      apiKey: "ضع_هنا_رمز_API_KEY_الخاص_بك", 
+      apiKey: "AIzaSyC2SqWsDrS1NfPw611jWN_Qi1PsbmQxm9Q",
       authDomain: "clinicsystem-936a1.firebaseapp.com",
+      databaseURL: "https://clinicsystem-936a1-default-rtdb.firebaseio.com",
       projectId: "clinicsystem-936a1",
       storageBucket: "clinicsystem-936a1.firebasestorage.app",
       messagingSenderId: "106870276867",
@@ -81,43 +82,44 @@
       measurementId: "G-40B0X58P2C"
     };
 
-    // 2. تشغيل الفايربيس وقاعدة البيانات
+    // تشغيل الفايربيس وقاعدة البيانات
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const usersCollection = collection(db, "users");
+    const db = getDatabase(app);
+    const usersRef = ref(db, 'users');
 
     const usernameInput = document.getElementById('username');
     const saveBtn = document.getElementById('saveBtn');
     const usersList = document.getElementById('usersList');
 
-    // 3. حفظ مستخدم جديد في السحابة
-    saveBtn.addEventListener('click', async () => {
+    // 1. حفظ بيانات جديدة سحابياً
+    saveBtn.addEventListener('click', () => {
       const name = usernameInput.value.trim();
       if (name === '') return alert('يرجى كتابة الاسم أولاً');
 
-      try {
-        await addDoc(usersCollection, {
-          name: name,
-          createdAt: new Date()
-        });
+      push(usersRef, {
+        name: name,
+        createdAt: Date.now()
+      }).then(() => {
         usernameInput.value = '';
-      } catch (error) {
+      }).catch((error) => {
         console.error("خطأ في الحفظ:", error);
-        alert("حدث خطأ أثناء الحفظ، تأكد من إعدادات Firestore في Firebase");
-      }
+        alert("حدث خطأ أثناء الحفظ! تأكد من إعدادات Rules في Firebase");
+      });
     });
 
-    // 4. استماع لحظي للبيانات (تتحدث تلقائياً عند الجميع بدون إعادة تحميل الصفحة)
-    onSnapshot(usersCollection, (snapshot) => {
+    // 2. تحديث الشاشة فوراً عند الجميع وبدون إعادة تحميل
+    onValue(usersRef, (snapshot) => {
       usersList.innerHTML = '';
-      if (snapshot.empty) {
+      const data = snapshot.val();
+      
+      if (!data) {
         usersList.innerHTML = '<li>لا توجد بيانات مسجلة حالياً</li>';
         return;
       }
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+
+      Object.keys(data).forEach((key) => {
         const li = document.createElement('li');
-        li.textContent = data.name;
+        li.textContent = data[key].name;
         usersList.appendChild(li);
       });
     });
